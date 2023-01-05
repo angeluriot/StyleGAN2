@@ -1,17 +1,16 @@
-import math
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import backend
 from tensorflow.keras.layers import Layer
 from tensorflow.keras.initializers import RandomNormal, Constant
 
+from settings import *
 
-def get_filters(max_filters, min_filters, nb_blocks, max_first):
+def get_filters(max_first):
 
 	filters = []
 
-	for i in range(nb_blocks):
-		filters.append(min(int(min_filters * (2 ** i)), max_filters))
+	for i in range(NB_BLOCKS):
+		filters.append(min(int(MIN_FILTERS * (2 ** i)), MAX_FILTERS))
 
 	if max_first:
 		return filters[::-1]
@@ -45,7 +44,7 @@ class PixelNorm(Layer):
 
 class EqualizedDense(Layer):
 
-	def __init__(self, units, bias_init = 0., use_bias = True, gain = 1., lr_multiplier = 1., **kwargs):
+	def __init__(self, units, bias_init = 0., use_bias = True, gain = GAIN, lr_multiplier = 1., **kwargs):
 
 		super(EqualizedDense, self).__init__(**kwargs)
 		self.units = units
@@ -105,7 +104,7 @@ class EqualizedDense(Layer):
 
 class EqualizedConv2D(Layer):
 
-	def __init__(self, filters, kernel_size, bias_init = 0., use_bias = True, gain = 1., lr_multiplier = 1., **kwargs):
+	def __init__(self, filters, kernel_size, bias_init = 0., use_bias = True, gain = GAIN, lr_multiplier = 1., **kwargs):
 
 		super(EqualizedConv2D, self).__init__(**kwargs)
 		self.filters = filters
@@ -158,10 +157,7 @@ class EqualizedConv2D(Layer):
 
 	def call(self, inputs):
 
-		if self.kernel_size > 1:
-			inputs = tf.pad(inputs, [[0, 0], [1, 1], [1, 1], [0, 0]], mode = "REFLECT")
-
-		output = tf.nn.conv2d(inputs, self.scale * self.kernel, strides = 1, padding = "VALID", data_format = "NHWC")
+		output = tf.nn.conv2d(inputs, self.scale * self.kernel, strides = 1, padding = "SAME", data_format = "NHWC")
 
 		if self.use_bias:
 			return (output + self.bias[None, None, None, :]) * self.lr_multiplier
@@ -231,7 +227,7 @@ class Bias(Layer):
 
 class ModulatedConv2D(Layer):
 
-	def __init__(self, filters, kernel_size, demodulate = True, epsilon = 1e-8, gain = 1., **kwargs):
+	def __init__(self, filters, kernel_size, demodulate = True, epsilon = 1e-8, gain = GAIN, **kwargs):
 
 		super(ModulatedConv2D, self).__init__(**kwargs)
 		self.filters = filters
@@ -323,12 +319,12 @@ class MinibatchStdDev(Layer):
 
 	def call(self, inputs):
 
-		mean = backend.mean(inputs, axis = 0, keepdims = True)
-		squ_diffs = backend.square(inputs - mean)
-		mean_sq_diff = backend.mean(squ_diffs, axis = 0, keepdims = True) + self.epsilon
-		stdev = backend.sqrt(mean_sq_diff)
-		mean_pix = backend.mean(stdev, keepdims = True)
-		shape = backend.shape(inputs)
-		output = backend.tile(mean_pix, (shape[0], shape[1], shape[2], 1))
+		mean = tf.reduce_mean(inputs, axis = 0, keepdims = True)
+		squ_diffs = tf.square(inputs - mean)
+		mean_sq_diff = tf.reduce_mean(squ_diffs, axis = 0, keepdims = True) + self.epsilon
+		stdev = tf.sqrt(mean_sq_diff)
+		mean_pix = tf.reduce_mean(stdev, keepdims = True)
+		shape = tf.shape(inputs)
+		output = tf.tile(mean_pix, (shape[0], shape[1], shape[2], 1))
 
-		return backend.concatenate([inputs, output], axis = -1)
+		return tf.concat([inputs, output], axis = -1)

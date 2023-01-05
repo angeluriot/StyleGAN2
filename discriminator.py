@@ -1,29 +1,29 @@
 import math
-import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Input, LeakyReLU, Add, Lambda, AveragePooling2D, Flatten, Activation
+from tensorflow.keras.layers import Input, LeakyReLU, Add, Lambda, AveragePooling2D, Flatten
 
-from layers import get_filters, EqualizedDense, EqualizedConv2D, MinibatchStdDev
+from settings import *
+from layers import *
 
 
-def from_rgb(input, filters, alpha, gain):
+def from_rgb(input, filters):
 
-	model = EqualizedConv2D(filters, 1, gain = gain)(input)
-	model = LeakyReLU(alpha)(model)
+	model = EqualizedConv2D(filters, 1)(input)
+	model = LeakyReLU(ALPHA)(model)
 
 	return model
 
 
-def build_dis_block(input, filters, kernel_size, alpha, gain):
+def build_block(input, filters):
 
-	residual = EqualizedConv2D(filters, 1, use_bias = False, gain = gain)(input)
+	residual = EqualizedConv2D(filters, 1, use_bias = False)(input)
 	residual = AveragePooling2D()(residual)
 
-	model = EqualizedConv2D(filters, kernel_size, gain = gain)(input)
-	model = LeakyReLU(alpha)(model)
+	model = EqualizedConv2D(filters, KERNEL_SIZE)(input)
+	model = LeakyReLU(ALPHA)(model)
 
-	model = EqualizedConv2D(filters, kernel_size, gain = gain)(model)
-	model = LeakyReLU(alpha)(model)
+	model = EqualizedConv2D(filters, KERNEL_SIZE)(model)
+	model = LeakyReLU(ALPHA)(model)
 
 	model = AveragePooling2D()(model)
 	model = Add()([model, residual])
@@ -32,29 +32,28 @@ def build_dis_block(input, filters, kernel_size, alpha, gain):
 	return model
 
 
-def build_discriminator(image_size, nb_channels, min_image_size, max_filters, min_filters, kernel_size, alpha, gain):
+def build_model():
 
-	nb_blocks = int(math.log(image_size, 2)) - int(math.log(min_image_size, 2)) + 1
-	filters = get_filters(max_filters, min_filters, nb_blocks, False)
+	filters = get_filters(False)
 
-	model_input = Input(shape = (image_size, image_size, nb_channels))
+	model_input = Input(shape = (IMAGE_SIZE, IMAGE_SIZE, NB_CHANNELS))
 
-	model = from_rgb(model_input, filters[0], alpha, gain)
+	model = from_rgb(model_input, filters[0])
 
-	for i in range(nb_blocks - 1):
-		model = build_dis_block(model, filters[i], kernel_size, alpha, gain)
+	for i in range(NB_BLOCKS - 1):
+		model = build_block(model, filters[i])
 
 	model = MinibatchStdDev()(model)
 
-	model = EqualizedConv2D(filters[-1], kernel_size, gain = gain)(model)
-	model = LeakyReLU(alpha)(model)
+	model = EqualizedConv2D(filters[-1], KERNEL_SIZE)(model)
+	model = LeakyReLU(ALPHA)(model)
 
 	model = Flatten()(model)
 
-	model = EqualizedDense(filters[-1], gain = gain)(model)
-	model = LeakyReLU(alpha)(model)
+	model = EqualizedDense(filters[-1])(model)
+	model = LeakyReLU(ALPHA)(model)
 
-	model = EqualizedDense(1, gain = gain)(model)
+	model = EqualizedDense(1)(model)
 
 	return Model(model_input, model)
 

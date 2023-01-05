@@ -12,9 +12,19 @@ def reset_rand():
 
 def norm_img(img):
 
-	return (img / 127.5) - 1.
+	return np.clip((img.astype(np.float32) / 127.5) - 1., -1., 1.)
+
+
+def tf_norm_img(img):
+
+	return tf.clip_by_value((tf.cast(img, tf.float32) / 127.5) - 1., -1., 1.)
 
 
 def denorm_img(img):
 
-	return ((img + 1.) * 127.5).astype(np.uint8)
+	return ((np.clip(img, -1., 1.) + 1.) * 127.5).astype(np.uint8)
+
+
+def tf_denorm_img(img):
+
+	return tf.cast((tf.clip_by_value(img, -1., 1.) + 1.) * 127.5, tf.uint8)
