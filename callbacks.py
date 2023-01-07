@@ -3,6 +3,7 @@ import math
 import numpy as np
 from PIL import Image
 from tensorflow.keras.callbacks import Callback
+from keras import backend
 
 from settings import *
 
@@ -27,6 +28,10 @@ class Updates(Callback):
 
 		self.model.epoch.assign(epoch)
 
+		lr = MIN_LR + (MAX_LR - MIN_LR) * np.exp(-float(epoch) * LR_SPEED)
+		backend.set_value(self.model.generator_optimizer.learning_rate, lr)
+		backend.set_value(self.model.discriminator_optimizer.learning_rate, lr)
+
 
 class SaveSamples(Callback):
 
@@ -43,7 +48,7 @@ class SaveSamples(Callback):
 
 		if batch % self.save_rate == 0:
 
-			generations = self.model.predict(self.z, list(self.noise), BATCH_SIZE)
+			generations = self.model.predict(self.z, list(self.noise))
 
 			output_image = np.full((
 				MARGIN + (OUTPUT_SHAPE[1] * (generations.shape[2] + MARGIN)),

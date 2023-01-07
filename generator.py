@@ -56,4 +56,6 @@ def build_model():
 		model, new_rgb = build_block(model, w_inputs[i], noise_inputs[(i * 2) - 1], noise_inputs[i * 2], filters[i])
 		rgb = Add()([UpSampling2D(interpolation = "bilinear")(rgb), new_rgb])
 
+	model = Activation("tanh")(rgb)
+
 	return Model([model_input] + w_inputs + noise_inputs, rgb)
