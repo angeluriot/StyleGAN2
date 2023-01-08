@@ -43,7 +43,7 @@ class SaveSamples(Callback):
 
 		if batch % self.save_rate == 0:
 
-			generations = self.model.predict(self.z, list(self.noise), BATCH_SIZE)
+			generations = self.model.predict(self.z, list(self.noise))
 
 			output_image = np.full((
 				MARGIN + (OUTPUT_SHAPE[1] * (generations.shape[2] + MARGIN)),

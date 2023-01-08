@@ -115,13 +115,13 @@ class GAN(Model):
 			self.ma_generator.layers[i].set_weights(new_weights)
 
 
-	def predict(self, z, noise, batch_size):
+	def predict(self, z, noise):
 
 		generations = np.zeros((z.shape[0], IMAGE_SIZE, IMAGE_SIZE, NB_CHANNELS), dtype = np.uint8)
 
-		for i in range(0, z.shape[0], batch_size):
+		for i in range(0, z.shape[0], BATCH_SIZE):
 
-			size = min(batch_size, z.shape[0] - i)
+			size = min(BATCH_SIZE, z.shape[0] - i)
 			const_input = [tf.ones((size, 1))]
 			w = tf.convert_to_tensor(self.ma_mapping(z[i:i + size]))
 			n = [tf.convert_to_tensor(j[i:i + size]) for j in noise]
